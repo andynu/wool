@@ -41,6 +41,12 @@ pub fn get_cli_matches<'a>() -> ArgMatches<'static> {
                 .long("katex")
                 .help("Include katex in rendering"),
         )
+        .arg(
+            Arg::with_name("d2")
+                .short("d")
+                .long("d2")
+                .help("Render inline D2 diagrams (requires d2 command)"),
+        )
         .arg(Arg::with_name("outfile").help("Sets the output file to use"))
         .get_matches()
 }

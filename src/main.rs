@@ -31,6 +31,8 @@ mod prism;
 mod template;
 mod openurl;
 mod katex;
+mod mermaid;
+mod d2;
 
 type SenderListPtr = Arc<Mutex<Vec<Sender<()>>>>;
 
@@ -64,8 +66,18 @@ async fn md_file() -> Result<Response<Body>, hyper::Error> {
     let mut options = set_opts();
     let latex = matches.is_present("katex");
     let highlight = matches.is_present("highlight");
+    let d2_enabled = matches.is_present("d2");
     if latex { options.ext_superscript = false};
-    let markdown = markdown_to_html(&contents, &options);
+    let mut markdown = markdown_to_html(&contents, &options);
+
+    // Process D2 diagrams if enabled
+    if d2_enabled {
+        if d2::check_d2_available() {
+            markdown = d2::process_d2_blocks(&markdown);
+        } else {
+            eprintln!("Warning: --d2 flag enabled but d2 command not found. Skipping D2 rendering.");
+        }
+    }
 
     let mut contents = String::new();
 
@@ -116,15 +128,17 @@ async fn md_file() -> Result<Response<Body>, hyper::Error> {
         contents.push_str(prism);
     }
     contents.push_str(reload_script);
-    contents.push_str(footer);
     if latex {
         contents.push_str(katex::KATEX_CSS);
         contents.push_str(katex::KATEXJS);
         contents.push_str(katex::AUTO_RELOAD);
-        contents.push_str(r#"<script> 
+        contents.push_str(r#"<script>
         renderMathInElement(document.body)
         </script> "#);
     }
+    // Always include Mermaid (only activates if mermaid code blocks present)
+    contents.push_str(&mermaid::mermaid_scripts());
+    contents.push_str(footer);
     
     
     Ok(response.body(Body::from(contents)).expect("invalid response builder"))
@@ -275,10 +289,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let matches = cli::get_cli_matches();
     let contents = fs::read_to_string(matches.value_of("infile").unwrap()).unwrap();
     let options = set_opts();
-    let markdown = markdown_to_html(&contents, &options);
+    let mut markdown = markdown_to_html(&contents, &options);
     let highlight = matches.is_present("highlight");
     let no_browser = matches.is_present("no-browser");
     let _latex = matches.is_present("katex");
+    let d2_enabled = matches.is_present("d2");
+
+    // Process D2 diagrams if enabled
+    if d2_enabled {
+        if d2::check_d2_available() {
+            markdown = d2::process_d2_blocks(&markdown);
+        } else {
+            eprintln!("Warning: --d2 flag enabled but d2 command not found. Skipping D2 rendering.");
+        }
+    }
 
     if matches.is_present("export-flag") {
         let infile = matches.value_of("infile").unwrap();
@@ -315,6 +339,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 file.write_all(prism.as_bytes())
                     .expect("could not write file");
             };
+            // Always include Mermaid (only activates if mermaid code blocks present)
+            file.write_all(mermaid::mermaid_scripts().as_bytes())
+                .expect("could not write file");
             file.write_all(footer.as_bytes())
                 .expect("could not write file");
         } else {
@@ -346,6 +373,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 file.write_all(prism.as_bytes())
                     .expect("could not highlight file");
             };
+            // Always include Mermaid (only activates if mermaid code blocks present)
+            file.write_all(mermaid::mermaid_scripts().as_bytes())
+                .expect("could not write file");
             file.write_all(footer.as_bytes())
                 .expect("could not write file");
         }
