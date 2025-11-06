@@ -24,10 +24,9 @@ pub fn get_cli_matches<'a>() -> ArgMatches<'static> {
                 .help("Don't render the preview frame"),
         )
         .arg(
-            Arg::with_name("highlight")
-                .short("s")
-                .long("highlight")
-                .help("Syntax highlighting"),
+            Arg::with_name("no-highlight")
+                .long("no-highlight")
+                .help("Disable syntax highlighting (enabled by default)"),
         )
         .arg(
             Arg::with_name("no-browser")
@@ -36,16 +35,14 @@ pub fn get_cli_matches<'a>() -> ArgMatches<'static> {
                 .help("Don't open browser (browser opens by default)"),
         )
         .arg(
-            Arg::with_name("katex")
-                .short("k")
-                .long("katex")
-                .help("Include katex in rendering"),
+            Arg::with_name("no-katex")
+                .long("no-katex")
+                .help("Disable KaTeX math rendering (enabled by default)"),
         )
         .arg(
-            Arg::with_name("d2")
-                .short("d")
-                .long("d2")
-                .help("Render inline D2 diagrams (requires d2 command)"),
+            Arg::with_name("no-d2")
+                .long("no-d2")
+                .help("Disable D2 diagram rendering (enabled by default)"),
         )
         .arg(Arg::with_name("outfile").help("Sets the output file to use"))
         .get_matches()

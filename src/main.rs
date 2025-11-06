@@ -64,9 +64,9 @@ async fn md_file() -> Result<Response<Body>, hyper::Error> {
     let matches = cli::get_cli_matches();
     let contents = fs::read_to_string(matches.value_of("infile").unwrap()).unwrap();
     let mut options = set_opts();
-    let latex = matches.is_present("katex");
-    let highlight = matches.is_present("highlight");
-    let d2_enabled = matches.is_present("d2");
+    let latex = !matches.is_present("no-katex");
+    let highlight = !matches.is_present("no-highlight");
+    let d2_enabled = !matches.is_present("no-d2");
     if latex { options.ext_superscript = false};
     let mut markdown = markdown_to_html(&contents, &options);
 
@@ -75,7 +75,7 @@ async fn md_file() -> Result<Response<Body>, hyper::Error> {
         if d2::check_d2_available() {
             markdown = d2::process_d2_blocks(&markdown);
         } else {
-            eprintln!("Warning: --d2 flag enabled but d2 command not found. Skipping D2 rendering.");
+            eprintln!("Warning: D2 diagram rendering is enabled by default but d2 command not found. Use --no-d2 to suppress this warning.");
         }
     }
 
@@ -290,17 +290,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let contents = fs::read_to_string(matches.value_of("infile").unwrap()).unwrap();
     let options = set_opts();
     let mut markdown = markdown_to_html(&contents, &options);
-    let highlight = matches.is_present("highlight");
+    let highlight = !matches.is_present("no-highlight");
     let no_browser = matches.is_present("no-browser");
-    let _latex = matches.is_present("katex");
-    let d2_enabled = matches.is_present("d2");
+    let _latex = !matches.is_present("no-katex");
+    let d2_enabled = !matches.is_present("no-d2");
 
     // Process D2 diagrams if enabled
     if d2_enabled {
         if d2::check_d2_available() {
             markdown = d2::process_d2_blocks(&markdown);
         } else {
-            eprintln!("Warning: --d2 flag enabled but d2 command not found. Skipping D2 rendering.");
+            eprintln!("Warning: D2 diagram rendering is enabled by default but d2 command not found. Use --no-d2 to suppress this warning.");
         }
     }
 

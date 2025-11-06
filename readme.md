@@ -1,9 +1,20 @@
 # wool
-Extensible [grip](https://github.com/joeyespo/grip) clone
+Extensible [grip](https://github.com/joeyespo/grip) clone with live preview, syntax highlighting, math rendering, and diagram support.
 
-## Installation 
+## Features
 
-`cargo install wool` 
+- **Live Preview**: GitHub-flavored markdown with auto-reload on file changes
+- **Syntax Highlighting**: Prism.js support for code blocks (enabled by default)
+- **Math Rendering**: KaTeX support for LaTeX equations (enabled by default)
+- **D2 Diagrams**: Inline SVG rendering from D2 code blocks (enabled by default, requires [d2](https://d2lang.com))
+- **Mermaid Diagrams**: Automatic rendering of Mermaid code blocks (always enabled)
+- **Multiple Instances**: Automatic port detection (ports 10009-10018) allows running multiple previews
+- **Browser Integration**: Automatically opens browser on startup
+- **Static Files**: Images and assets served relative to markdown file location
+
+## Installation
+
+`cargo install wool`
 
 ## Usage
 ```
@@ -11,41 +22,73 @@ USAGE:
     wool [FLAGS] <infile> [outfile]
 
 FLAGS:
-    -b, --no-browser          Don't open browser (browser opens by default)
-    -d, --d2                  Render inline D2 diagrams (requires d2 command)
     -e, --export              Export html
     -h, --help                Prints help information
-    -s, --highlight           Syntax highlighting
-    -k, --katex               Include katex in rendering
+    -b, --no-browser          Don't open browser (browser opens by default)
+        --no-d2               Disable D2 diagram rendering (enabled by default)
+        --no-highlight        Disable syntax highlighting (enabled by default)
+        --no-katex            Disable KaTeX math rendering (enabled by default)
     -n, --no-preview-frame    Don't render the preview frame
-    -V, --version             Prints version information 
-    
+    -V, --version             Prints version information
+
 ARGS:
     <infile>     Sets the input file to use
     <outfile>    Sets the output file to use
 ```
 
-#### Example
+## Examples
 
-preview on localhost (opens browser automatically):
-`wool readme.md`
+#### Basic preview
+Opens browser automatically with all features enabled (syntax highlighting, KaTeX, D2, Mermaid):
+```bash
+wool readme.md
+```
 
-preview without opening browser:
-`wool readme.md --no-browser`
+#### Preview without browser
+```bash
+wool readme.md --no-browser
+```
 
-export to html:
-`wool readme.md --export mypreview.html`
+#### Export to HTML
+```bash
+wool readme.md --export mypreview.html
+```
 
-equations with katex:
-`wool readme.md -k`
+#### Disable specific features
+```bash
+# Disable KaTeX math rendering
+wool readme.md --no-katex
 
-diagrams with D2 (requires [d2](https://d2lang.com) to be installed):
-`wool readme.md -d`
+# Disable syntax highlighting
+wool readme.md --no-highlight
 
-###### Experimental
+# Disable D2 diagrams
+wool readme.md --no-d2
 
-Syntax highlighting:
-`wool readme.md -s`
+# Disable multiple features
+wool readme.md --no-katex --no-d2
+```
+
+## Diagram Support
+
+### D2 Diagrams
+Create diagrams using [D2](https://d2lang.com) syntax in code blocks:
+
+````markdown
+```d2
+x -> y: hello world
+```
+````
+
+### Mermaid Diagrams
+Create diagrams using Mermaid syntax in code blocks:
+
+````markdown
+```mermaid
+graph TD
+    A[Start] --> B[End]
+```
+````
 
 <!--
 ## Installation Options
