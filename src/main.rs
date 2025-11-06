@@ -2,7 +2,6 @@ use comrak::{markdown_to_html, ComrakOptions};
 use std::fs;
 use std::fs::File as Sync_File;
 use std::io::Write;
-use std::io::Error;
 use url::Url;
 use log::{info, debug, error};
 use std::path::Path;
@@ -19,17 +18,11 @@ use std::sync::{Arc, Mutex};
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server, StatusCode};
 use hyper_staticfile::*;
-use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode};
 
-use tokio_fs::File;
-// use tokio_io::AsyncReadExt;
-use tokio_sync::oneshot::{self, Sender};
-use tokio_sync::*;
-use tokio::*;
-use tokio_fs::*;
-use tokio_io::*;
-use tokio_sync::*;
+use tokio::fs::File;
 use tokio::io::AsyncReadExt;
+use tokio::sync::oneshot::{self, Sender};
 
 mod cli;
 mod prism;
@@ -170,7 +163,7 @@ async fn static_file(req: Request<Body>) -> Result<Response<Body>, hyper::Error>
         
 }
 
-async fn router(updaters: SenderListPtr, req: Request<Body> ) -> Result<Response<Body>, hyper::error::Error> {
+async fn router(updaters: SenderListPtr, req: Request<Body> ) -> Result<Response<Body>, hyper::Error> {
     match req.uri().path() {
         "/update" => update(updaters).await,
         "/" => md_file().await,
@@ -179,10 +172,10 @@ async fn router(updaters: SenderListPtr, req: Request<Body> ) -> Result<Response
 
             let root = Path::new("");
              let result = hyper_staticfile::resolve_path(&root, &req.uri().path()).await.unwrap();
-             
+
              match result {
         ResolveResult::MethodNotMatched => return Ok(method_not_allowed()),
-        ResolveResult::NotFound | ResolveResult::UriNotMatched => {
+        ResolveResult::NotFound | ResolveResult::PermissionDenied | ResolveResult::IsDirectory => {
             return Ok(not_found(Path::new(&root.join("404.html"))).await)
         }
         _ => (),
@@ -233,16 +226,18 @@ fn method_not_allowed() -> Response<Body> {
 
 // attribution https://github.com/razorheadfx/grup
 fn spawn_watcher(updaters: SenderListPtr) -> notify::Result<RecommendedWatcher> {
-    
+    use notify::Watcher as _;
+
     let matches = cli::get_cli_matches();
 
     // this uses os specific file watching where possible (i.e. inotify on linux)
     // it forks of a mio event loop in the background and then calls the provided closure
     // with the yielded events
-    let cwd = env::current_dir().unwrap(); 
-    let md_file_name = cwd.join(&(matches.value_of("infile").unwrap())).to_owned(); 
-    let mut file_event_watcher: RecommendedWatcher =
-        Watcher::new_immediate(move |event: notify::Result<Event>| {
+    let cwd = env::current_dir().unwrap();
+    let md_file_name = cwd.join(&(matches.value_of("infile").unwrap())).to_owned();
+
+    let mut file_event_watcher = RecommendedWatcher::new(
+        move |event: notify::Result<Event>| {
             let event = match event {
                 Ok(ev) => ev,
                 Err(e) => {
@@ -250,7 +245,7 @@ fn spawn_watcher(updaters: SenderListPtr) -> notify::Result<RecommendedWatcher> 
                     return;
                 }
             };
-   
+
             match event.kind {
                 EventKind::Create(_) => debug!("files created {:?}", &event.paths),
                 EventKind::Modify(_) => debug!("files modified {:?}", &event.paths),
@@ -266,9 +261,11 @@ fn spawn_watcher(updaters: SenderListPtr) -> notify::Result<RecommendedWatcher> 
                     error!("Internal error: mutex");
                 }
             }
-        })?;
+        },
+        notify::Config::default(),
+    )?;
 
-    file_event_watcher.watch(&cwd, RecursiveMode::NonRecursive)?;
+    file_event_watcher.watch(cwd.as_path(), RecursiveMode::NonRecursive)?;
     Ok(file_event_watcher)
 }
 
