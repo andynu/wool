@@ -132,10 +132,11 @@ async fn router(updaters: SenderListPtr, req: Request<Body> ) -> Result<Response
         "/update" => update(updaters).await,
         "/" => md_file().await,
         _ => {
-          
-
-            let root = Path::new("");
-             let result = hyper_staticfile::resolve_path(&root, &req.uri().path()).await.unwrap();
+            // Serve static files relative to the markdown file's directory
+            let matches = cli::get_cli_matches();
+            let infile_path = Path::new(matches.value_of("infile").unwrap());
+            let root = infile_path.parent().unwrap_or(Path::new("."));
+            let result = hyper_staticfile::resolve_path(&root, &req.uri().path()).await.unwrap();
 
              match result {
         ResolveResult::MethodNotMatched => return Ok(method_not_allowed()),
