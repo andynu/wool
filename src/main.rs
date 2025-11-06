@@ -278,7 +278,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let markdown = markdown_to_html(&contents, &options);
     let highlight = matches.is_present("highlight");
     let no_browser = matches.is_present("no-browser");
-    let latex = matches.is_present("katex");
+    let _latex = matches.is_present("katex");
 
     if matches.is_present("export-flag") {
         let infile = matches.value_of("infile").unwrap();
