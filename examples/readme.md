@@ -30,5 +30,46 @@ export to html:
 
 ###### Experimental
 
-Syntax highlighting:   
+Syntax highlighting:
 `wool readme.md -s`
+
+## Mermaid Diagram Support
+
+Wool supports inline Mermaid diagrams. Simply use code blocks with the `mermaid` language tag:
+
+### Flowchart Example
+
+```mermaid
+graph LR
+    A[Markdown File] --> B[Wool]
+    B --> C[HTML Output]
+    C --> D[Browser]
+    D --> E[Rendered Diagrams]
+```
+
+### Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Wool
+    participant Browser
+    User->>Wool: wool readme.md
+    Wool->>Browser: Open localhost
+    Browser->>User: Display rendered page
+```
+
+### Simple Chart
+
+```mermaid
+pie title Distribution
+    "Markdown" : 40
+    "Diagrams" : 35
+    "Code" : 25
+```
+
+For more examples, see [mermaid-test.md](mermaid-test.md) which includes:
+- Flowcharts and sequence diagrams
+- Gantt charts and timelines
+- Class and ER diagrams
+- State machines and user journeys
