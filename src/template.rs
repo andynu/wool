@@ -88,6 +88,7 @@ container new-discussion-timeline experiment-repo-nav\"> -->
  ", filename)
 }
 
+#[allow(dead_code)]
 pub fn format_boilerplate_no_preview(_filename: &str) -> String {
     format!(
 "
