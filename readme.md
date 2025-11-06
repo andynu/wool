@@ -11,7 +11,7 @@ USAGE:
     wool [FLAGS] <infile> [outfile]
 
 FLAGS:
-    -b, --browser             Open in browser
+    -b, --no-browser          Don't open browser (browser opens by default)
     -e, --export              Export html
     -h, --help                Prints help information
     -s, --highlight           Syntax highlighting
@@ -26,13 +26,16 @@ ARGS:
 
 #### Example
 
-preview on localhost:   
-`wool readme.md` 
+preview on localhost (opens browser automatically):
+`wool readme.md`
 
-export to html:    
+preview without opening browser:
+`wool readme.md --no-browser`
+
+export to html:
 `wool readme.md --export mypreview.html`
 
-equations with katex:   
+equations with katex:
 `wool readme.md -k`
 
 ###### Experimental
