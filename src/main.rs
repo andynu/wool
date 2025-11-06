@@ -368,12 +368,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
         let addr = std::net::SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 10009);
         let server = Server::bind(&addr).serve(service);
-        
-        if browser { 
-            let url = Url::parse("http://localhost:10009").unwrap();
-               openurl::open(&url);
+
+        let url_str = "http://localhost:10009";
+        if browser {
+            println!("Opening browser at {}", url_str);
+            let url = Url::parse(url_str).unwrap();
+            match openurl::open(&url) {
+                Ok(_) => println!("Browser launched successfully"),
+                Err(e) => eprintln!("Failed to open browser: {}\nPlease navigate to {} manually", e, url_str),
+            }
+        } else {
+            println!("Server started. Use --browser (-b) flag to auto-open browser");
         }
-        println!("listening on http://localhost:10009");
+        println!("Listening on {}", url_str);
         server.await?;
         Ok(())
     }

@@ -31,6 +31,9 @@ use url::Url;
 pub trait UrlOpen {
     /// Opens this URL in the system's default browser.
     ///
+    /// Returns `Ok(())` if the command was executed successfully, or an error message
+    /// describing what went wrong.
+    ///
     /// # Example
     ///
     /// ```no_run
@@ -38,14 +41,16 @@ pub trait UrlOpen {
     /// use wool::openurl::UrlOpen;
     ///
     /// let url = Url::parse("http://example.com").unwrap();
-    /// url.open();
+    /// if let Err(e) = url.open() {
+    ///     eprintln!("Failed to open browser: {}", e);
+    /// }
     /// ```
-    fn open(&self);
+    fn open(&self) -> Result<(), String>;
 }
 
 impl UrlOpen for Url {
-    fn open(&self) {
-        open(self);
+    fn open(&self) -> Result<(), String> {
+        open(self)
     }
 }
 
@@ -55,24 +60,34 @@ impl UrlOpen for Url {
 /// argument after "start" is the window title parameter, which prevents URLs
 /// starting with quotes from being misinterpreted.
 ///
+/// Returns `Ok(())` if the command was executed successfully, or an error message
+/// describing what went wrong.
+///
 /// This function is only compiled on Windows targets.
 #[cfg(target_os = "windows")]
-pub fn open(url: &Url) {
-    let _ = std::process::Command::new("cmd")
+pub fn open(url: &Url) -> Result<(), String> {
+    std::process::Command::new("cmd")
         .args(&["/C", "start", "", url.as_str()])
-        .output();
+        .output()
+        .map(|_| ())
+        .map_err(|e| format!("Failed to execute 'cmd /C start': {}", e))
 }
 
 /// Opens a URL in the default browser on macOS.
 ///
 /// Uses the macOS `open` command to launch the URL in the default browser.
 ///
+/// Returns `Ok(())` if the command was executed successfully, or an error message
+/// describing what went wrong.
+///
 /// This function is only compiled on macOS targets.
 #[cfg(target_os = "macos")]
-pub fn open(url: &Url) {
-    let _ = std::process::Command::new("open")
+pub fn open(url: &Url) -> Result<(), String> {
+    std::process::Command::new("open")
         .arg(url.as_str())
-        .output();
+        .output()
+        .map(|_| ())
+        .map_err(|e| format!("Failed to execute 'open': {}", e))
 }
 
 /// Opens a URL in the default browser on Linux.
@@ -80,29 +95,34 @@ pub fn open(url: &Url) {
 /// Uses the freedesktop.org standard `xdg-open` utility, which is the
 /// standard way to open URLs on Linux desktop environments.
 ///
+/// Returns `Ok(())` if the command was executed successfully, or an error message
+/// describing what went wrong.
+///
 /// This function is only compiled on Linux targets.
 #[cfg(target_os = "linux")]
-pub fn open(url: &Url) {
-    let _ = std::process::Command::new("xdg-open")
+pub fn open(url: &Url) -> Result<(), String> {
+    std::process::Command::new("xdg-open")
         .arg(url.as_str())
-        .output();
+        .output()
+        .map(|_| ())
+        .map_err(|e| format!("Failed to execute 'xdg-open': {}", e))
 }
 
 /// Opens a URL in the default browser on other Unix-like systems.
 ///
 /// Attempts to use `xdg-open` as it's commonly available on BSD and other
-/// Unix-like systems. If the command fails, prints an error message with
-/// the URL so the user can manually navigate to it.
+/// Unix-like systems.
+///
+/// Returns `Ok(())` if the command was executed successfully, or an error message
+/// describing what went wrong.
 ///
 /// This function is compiled on Unix-like systems other than Linux and macOS,
 /// such as FreeBSD, OpenBSD, NetBSD, etc.
 #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
-pub fn open(url: &Url) {
-    if std::process::Command::new("xdg-open")
+pub fn open(url: &Url) -> Result<(), String> {
+    std::process::Command::new("xdg-open")
         .arg(url.as_str())
         .output()
-        .is_err()
-    {
-        eprintln!("Failed to open browser. Please navigate to: {}", url);
-    }
+        .map(|_| ())
+        .map_err(|e| format!("Failed to execute 'xdg-open': {}", e))
 }
