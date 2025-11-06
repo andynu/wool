@@ -54,7 +54,7 @@ async fn update(updaters: SenderListPtr) -> Result<Response<Body>, hyper::Error>
 }
 
 async fn md_file() -> Result<Response<Body>, hyper::Error> {
-    let mut response = Response::builder();
+    let response = Response::builder();
     // response.header("Content-type", "text/html");
     
     let matches = cli::get_cli_matches();
