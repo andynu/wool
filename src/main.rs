@@ -130,7 +130,7 @@ async fn md_file() -> Result<Response<Body>, hyper::Error> {
 
 // Will only serve files relative to the md file
 async fn static_file(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
-    let mut response = Response::builder();
+    let response = Response::builder();
     let cwd = std::env::current_dir().expect("no working dir");
     if req.uri().path().len() > 1 {
         let mut fullpath = cwd.clone();
