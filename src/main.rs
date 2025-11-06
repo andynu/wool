@@ -3,7 +3,7 @@ use std::fs;
 use std::fs::File as Sync_File;
 use std::io::Write;
 use url::Url;
-use log::{info, debug, error};
+use log::{debug, error};
 use std::path::Path;
 use hyper::header;
 
@@ -20,7 +20,6 @@ use hyper::{Body, Request, Response, Server, StatusCode};
 use hyper_staticfile::*;
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode};
 
-use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use tokio::sync::oneshot::{self, Sender};
 
