@@ -15,7 +15,10 @@
 //! use wool::openurl;
 //!
 //! let url = Url::parse("http://localhost:10009").unwrap();
-//! openurl::open(&url);
+//! match openurl::open(&url) {
+//!     Ok(_) => println!("Browser opened successfully"),
+//!     Err(e) => eprintln!("Failed to open browser: {}", e),
+//! }
 //! ```
 //!
 //! # Attribution
@@ -23,36 +26,6 @@
 //! Original concept from: <https://github.com/overdrivenpotato/url_open>
 
 use url::Url;
-
-/// Trait providing convenient URL opening functionality.
-///
-/// This trait extends the `Url` type with an `open()` method that
-/// launches the URL in the system's default browser.
-pub trait UrlOpen {
-    /// Opens this URL in the system's default browser.
-    ///
-    /// Returns `Ok(())` if the command was executed successfully, or an error message
-    /// describing what went wrong.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use url::Url;
-    /// use wool::openurl::UrlOpen;
-    ///
-    /// let url = Url::parse("http://example.com").unwrap();
-    /// if let Err(e) = url.open() {
-    ///     eprintln!("Failed to open browser: {}", e);
-    /// }
-    /// ```
-    fn open(&self) -> Result<(), String>;
-}
-
-impl UrlOpen for Url {
-    fn open(&self) -> Result<(), String> {
-        open(self)
-    }
-}
 
 /// Opens a URL in the default browser on Windows.
 ///
