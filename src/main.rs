@@ -33,7 +33,7 @@ mod katex;
 type SenderListPtr = Arc<Mutex<Vec<Sender<()>>>>;
 
 async fn update(updaters: SenderListPtr) -> Result<Response<Body>, hyper::Error> {
-    let mut response = Response::builder();
+    let response = Response::builder();
     /*
     response.header("Cache-Control", "no-cache, no-store, must-revalidate");
     response.header("Pragma", "no-cache");
