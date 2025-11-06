@@ -8,12 +8,12 @@ USAGE:
     wool [FLAGS] <infile> [outfile]
 
 FLAGS:
-    -b, --no-browser          Don't open browser (browser opens by default)
-    -d, --d2                  Render inline D2 diagrams (requires d2 command)
     -e, --export              Export html
     -h, --help                Prints help information
-    -s, --highlight           Syntax highlighting
-    -k, --katex               Include katex in rendering
+    -b, --no-browser          Don't open browser (browser opens by default)
+        --no-d2               Disable D2 diagram rendering (enabled by default)
+        --no-highlight        Disable syntax highlighting (enabled by default)
+        --no-katex            Disable KaTeX math rendering (enabled by default)
     -n, --no-preview-frame    Don't render the preview frame
     -V, --version             Prints version information
 
@@ -32,13 +32,14 @@ ARGS:
 | Strikethrough | ✓ | (default) |
 | Footnotes | ✓ | (default) |
 | Task Lists | ✓ | (default) |
-| Syntax Highlighting | ✓ | `-s` |
-| KaTeX Math | ✓ | `-k` |
-| D2 Diagrams | ✓ | `-d` |
+| Syntax Highlighting | ✓ | (enabled by default) |
+| KaTeX Math | ✓ | (enabled by default) |
+| D2 Diagrams | ✓ | (enabled by default) |
+| Mermaid Diagrams | ✓ | (always enabled) |
 
 ### Code Blocks with Syntax Highlighting
 
-Use the `-s` flag to enable syntax highlighting:
+Syntax highlighting is enabled by default:
 
 ```python
 def fibonacci(n):
@@ -50,7 +51,7 @@ def fibonacci(n):
 
 ### Math Equations with KaTeX
 
-Use the `-k` flag to enable KaTeX rendering:
+KaTeX math rendering is enabled by default:
 
 Inline math: $E = mc^2$
 
@@ -105,7 +106,7 @@ For more examples, see [mermaid-test.md](mermaid-test.md) which includes:
 
 **Note:** D2 diagram rendering requires the [d2](https://d2lang.com) command to be installed on your system.
 
-Use the `-d` flag to enable D2 diagram rendering:
+D2 diagram rendering is enabled by default:
 
 ```d2
 # Simple connection diagram
@@ -157,11 +158,26 @@ app -> user: Response
 
 ## Examples
 
-preview on localhost:
-`wool examples/readme.md`
+Preview on localhost with all features (all enabled by default):
+```bash
+wool examples/readme.md
+```
 
-export to html:
-`wool examples/readme.md --export mypreview.html`
+Preview without browser:
+```bash
+wool examples/readme.md --no-browser
+```
 
-with all features enabled:
-`wool examples/readme.md -d -k -s`
+Export to HTML:
+```bash
+wool examples/readme.md --export mypreview.html
+```
+
+Disable specific features:
+```bash
+# Disable KaTeX math
+wool examples/readme.md --no-katex
+
+# Disable all optional features
+wool examples/readme.md --no-katex --no-highlight --no-d2
+```
