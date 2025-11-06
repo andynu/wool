@@ -30,10 +30,10 @@ pub fn get_cli_matches<'a>() -> ArgMatches<'static> {
                 .help("Syntax highlighting"),
         )
         .arg(
-            Arg::with_name("browser")
+            Arg::with_name("no-browser")
                 .short("b")
-                .long("browser")
-                .help("Open in browser"),
+                .long("no-browser")
+                .help("Don't open browser (browser opens by default)"),
         )
         .arg(
             Arg::with_name("katex")
