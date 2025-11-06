@@ -140,8 +140,8 @@ async fn static_file(req: Request<Body>) -> Result<Response<Body>, hyper::Error>
         // canonicalize returns Err if path does not exist.
         if let Ok(fullpath) = fullpath.canonicalize() {
             if fullpath.starts_with(&cwd) {
-                if let Ok(mut file) = File::open(&fullpath).await {
-                    let mut buf = String::new();
+                if let Ok(_file) = File::open(&fullpath).await {
+                    let buf = String::new();
                     //if file.read_to_string(&mut buf).await.is_ok() {
                         return Ok(response
                             .body(Body::from(buf))
