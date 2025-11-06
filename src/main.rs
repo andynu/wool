@@ -11,6 +11,9 @@ static INTERNAL_SERVER_ERROR_TEXT: &[u8] = b"Internal Server Error";
 static METHOD_NOT_ALLOWED_TEXT: &[u8] = b"Method Not Allowed";
 static NOT_FOUND_TEXT: &[u8] = b"Not Found la la";
 
+const DEFAULT_PORT: u16 = 10009;
+const MAX_PORT_ATTEMPTS: u16 = 10;
+
 use std::env;
 use std::net::{IpAddr, Ipv4Addr};
 use std::sync::{Arc, Mutex};
@@ -234,6 +237,38 @@ fn spawn_watcher(updaters: SenderListPtr) -> notify::Result<RecommendedWatcher> 
     Ok(file_event_watcher)
 }
 
+fn find_available_port<S>(
+    start_port: u16,
+    max_attempts: u16,
+    _service: S,
+) -> Result<(hyper::server::Builder<hyper::server::conn::AddrIncoming>, u16), Box<dyn std::error::Error + Send + Sync>>
+where
+    S: Clone,
+{
+    for attempt in 0..max_attempts {
+        let port = start_port + attempt;
+        let addr = std::net::SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port);
+
+        match Server::try_bind(&addr) {
+            Ok(builder) => {
+                return Ok((builder, port));
+            },
+            Err(_e) if attempt < max_attempts - 1 => {
+                // Continue to next port
+                continue;
+            },
+            Err(e) => {
+                return Err(format!(
+                    "Failed to bind to any port in range {}-{}: {}",
+                    start_port,
+                    start_port + max_attempts - 1,
+                    e
+                ).into());
+            }
+        }
+    }
+    unreachable!()
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -331,13 +366,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             }
         });
 
-        let addr = std::net::SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 10009);
-        let server = Server::bind(&addr).serve(service);
+        let (builder, actual_port) = find_available_port(DEFAULT_PORT, MAX_PORT_ATTEMPTS, service.clone())?;
+        let server = builder.serve(service);
 
-        let url_str = "http://localhost:10009";
+        if actual_port != DEFAULT_PORT {
+            println!("Note: Default port {} was unavailable, using port {} instead", DEFAULT_PORT, actual_port);
+        }
+
+        let url_str = format!("http://localhost:{}", actual_port);
         if !no_browser {
             println!("Opening browser at {}", url_str);
-            let url = Url::parse(url_str).unwrap();
+            let url = Url::parse(&url_str).unwrap();
             match openurl::open(&url) {
                 Ok(_) => println!("Browser launched successfully"),
                 Err(e) => eprintln!("Failed to open browser: {}\nPlease navigate to {} manually", e, url_str),
