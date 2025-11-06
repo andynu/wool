@@ -12,6 +12,7 @@ USAGE:
 
 FLAGS:
     -b, --no-browser          Don't open browser (browser opens by default)
+    -d, --d2                  Render inline D2 diagrams (requires d2 command)
     -e, --export              Export html
     -h, --help                Prints help information
     -s, --highlight           Syntax highlighting
@@ -38,9 +39,12 @@ export to html:
 equations with katex:
 `wool readme.md -k`
 
+diagrams with D2 (requires [d2](https://d2lang.com) to be installed):
+`wool readme.md -d`
+
 ###### Experimental
 
-Syntax highlighting:   
+Syntax highlighting:
 `wool readme.md -s`
 
 <!--
