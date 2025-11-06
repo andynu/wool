@@ -277,7 +277,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let options = set_opts();
     let markdown = markdown_to_html(&contents, &options);
     let highlight = matches.is_present("highlight");
-    let browser = matches.is_present("browser");
+    let no_browser = matches.is_present("no-browser");
     let latex = matches.is_present("katex");
 
     if matches.is_present("export-flag") {
@@ -370,7 +370,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let server = Server::bind(&addr).serve(service);
 
         let url_str = "http://localhost:10009";
-        if browser {
+        if !no_browser {
             println!("Opening browser at {}", url_str);
             let url = Url::parse(url_str).unwrap();
             match openurl::open(&url) {
@@ -378,7 +378,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 Err(e) => eprintln!("Failed to open browser: {}\nPlease navigate to {} manually", e, url_str),
             }
         } else {
-            println!("Server started. Use --browser (-b) flag to auto-open browser");
+            println!("Server started. Browser launch disabled by --no-browser flag");
         }
         println!("Listening on {}", url_str);
         server.await?;
