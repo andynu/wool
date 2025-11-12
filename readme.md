@@ -4,6 +4,7 @@ Extensible [grip](https://github.com/joeyespo/grip) clone with live preview, syn
 ## Features
 
 - **Live Preview**: GitHub-flavored markdown with auto-reload on file changes
+- **Linked Document Navigation**: Click relative markdown links to navigate between documents with live reload
 - **Syntax Highlighting**: Prism.js support for code blocks (enabled by default)
 - **Math Rendering**: KaTeX support for LaTeX equations (enabled by default)
 - **D2 Diagrams**: Inline SVG rendering from D2 code blocks (enabled by default, requires [d2](https://d2lang.com))
@@ -42,6 +43,16 @@ ARGS:
 Opens browser automatically with all features enabled (syntax highlighting, KaTeX, D2, Mermaid):
 ```bash
 wool readme.md
+```
+
+#### Navigate between linked markdown files
+When previewing markdown, click on any relative link to a `.md` or `.markdown` file to navigate to that document. The preview will update and live reload will track the new file. Perfect for documentation with multiple interconnected files.
+
+```markdown
+<!-- In readme.md -->
+See the [API documentation](docs/api.md) for details.
+
+<!-- Clicking the link navigates to docs/api.md in the preview -->
 ```
 
 #### Preview without browser
