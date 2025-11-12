@@ -4,7 +4,7 @@ use std::fs::File as Sync_File;
 use std::io::Write;
 use url::Url;
 use log::{debug, error};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use hyper::header;
 
 static INTERNAL_SERVER_ERROR_TEXT: &[u8] = b"Internal Server Error";
@@ -16,7 +16,7 @@ const MAX_PORT_ATTEMPTS: u16 = 10;
 
 use std::env;
 use std::net::{IpAddr, Ipv4Addr};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server, StatusCode};
@@ -35,6 +35,37 @@ mod mermaid;
 mod d2;
 
 type SenderListPtr = Arc<Mutex<Vec<Sender<()>>>>;
+type CurrentFilePtr = Arc<RwLock<PathBuf>>;
+
+fn validate_markdown_path(requested: &str) -> Result<PathBuf, String> {
+    // Check if file has markdown extension
+    let lower = requested.to_lowercase();
+    if !lower.ends_with(".md") && !lower.ends_with(".markdown") {
+        return Err("Only markdown files (.md, .markdown) can be rendered".to_string());
+    }
+
+    // Get current working directory
+    let cwd = env::current_dir().map_err(|e| format!("Cannot determine working directory: {}", e))?;
+
+    // Resolve the requested path relative to cwd
+    let requested_path = cwd.join(requested);
+
+    // Canonicalize to resolve .. and . and get absolute path
+    let canonical = requested_path.canonicalize()
+        .map_err(|e| format!("File not found or cannot be accessed: {}", e))?;
+
+    // Ensure the canonical path is still under cwd (prevent directory traversal)
+    if !canonical.starts_with(&cwd) {
+        return Err("Access denied: path outside working directory".to_string());
+    }
+
+    // Verify it's a file (not a directory)
+    if !canonical.is_file() {
+        return Err("Path is not a file".to_string());
+    }
+
+    Ok(canonical)
+}
 
 async fn update(updaters: SenderListPtr) -> Result<Response<Body>, hyper::Error> {
     let response = Response::builder();
@@ -57,12 +88,33 @@ async fn update(updaters: SenderListPtr) -> Result<Response<Body>, hyper::Error>
         .expect("invalid response builder"))
 }
 
-async fn md_file() -> Result<Response<Body>, hyper::Error> {
+async fn md_file(file_path_override: Option<PathBuf>) -> Result<Response<Body>, hyper::Error> {
     let response = Response::builder();
     // response.header("Content-type", "text/html");
-    
+
     let matches = cli::get_cli_matches();
-    let contents = fs::read_to_string(matches.value_of("infile").unwrap()).unwrap();
+
+    // Use override path if provided, otherwise use CLI infile
+    let file_path = match file_path_override {
+        Some(path) => path,
+        None => {
+            let cwd = env::current_dir().unwrap();
+            cwd.join(matches.value_of("infile").unwrap())
+        }
+    };
+
+    let contents = match fs::read_to_string(&file_path) {
+        Ok(content) => content,
+        Err(e) => {
+            let error_html = format!(
+                "<!DOCTYPE html><html><body><h1>Error reading file</h1><p>{}</p></body></html>",
+                e
+            );
+            return Ok(response.status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::from(error_html))
+                .expect("invalid response builder"));
+        }
+    };
     let mut options = set_opts();
     let latex = !matches.is_present("no-katex");
     let highlight = !matches.is_present("no-highlight");
@@ -81,8 +133,11 @@ async fn md_file() -> Result<Response<Body>, hyper::Error> {
 
     let mut contents = String::new();
 
-   let infile = matches.value_of("infile").unwrap();
-   let boilerplate = template::format_boilerplate(infile);
+   // Use the filename from the actual file being rendered
+   let display_name = file_path.file_name()
+       .and_then(|n| n.to_str())
+       .unwrap_or("unknown");
+   let boilerplate = template::format_boilerplate(display_name);
    let css: &str = template::CSS;
    let footer: &str = template::FOOTER;
        let prism: &str = prism::PRISM;
@@ -90,7 +145,7 @@ async fn md_file() -> Result<Response<Body>, hyper::Error> {
     
     
     // push it all into a container
-    let reload_script: &str = 
+    let reload_script: &str =
         r#"
             <script type="text/javascript">
             function reload_check () {{
@@ -115,6 +170,25 @@ async fn md_file() -> Result<Response<Body>, hyper::Error> {
                 xhr.send();
             }}
             reload_check();
+
+            // Link interception for markdown files
+            document.addEventListener('DOMContentLoaded', function() {{
+                document.addEventListener('click', function(e) {{
+                    var target = e.target;
+                    // Walk up the DOM tree to find an <a> tag
+                    while (target && target.tagName !== 'A') {{
+                        target = target.parentElement;
+                    }}
+                    if (target && target.tagName === 'A') {{
+                        var href = target.getAttribute('href');
+                        // Check if it's a relative markdown link
+                        if (href && /\.md(arkdown)?$/i.test(href) && !href.startsWith('http') && !href.startsWith('#')) {{
+                            e.preventDefault();
+                            window.location.href = '/?file=' + encodeURIComponent(href);
+                        }}
+                    }}
+                }});
+            }});
             </script>
         "#;
             
@@ -144,10 +218,57 @@ async fn md_file() -> Result<Response<Body>, hyper::Error> {
     Ok(response.body(Body::from(contents)).expect("invalid response builder"))
 }
 
-async fn router(updaters: SenderListPtr, req: Request<Body> ) -> Result<Response<Body>, hyper::Error> {
+async fn router(updaters: SenderListPtr, current_file: CurrentFilePtr, req: Request<Body> ) -> Result<Response<Body>, hyper::Error> {
     match req.uri().path() {
         "/update" => update(updaters).await,
-        "/" => md_file().await,
+        "/" => {
+            // Parse query parameter for ?file=<path>
+            let query = req.uri().query();
+            let file_override = if let Some(q) = query {
+                // Parse query string to find file parameter
+                let params: Vec<&str> = q.split('&').collect();
+                let mut file_param = None;
+                for param in params {
+                    if let Some(value) = param.strip_prefix("file=") {
+                        // URL decode the value
+                        if let Ok(decoded) = urlencoding::decode(value) {
+                            file_param = Some(decoded.to_string());
+                        }
+                        break;
+                    }
+                }
+
+                // Validate the file path if provided
+                if let Some(file_str) = file_param {
+                    match validate_markdown_path(&file_str) {
+                        Ok(path) => {
+                            // Update the current file being watched
+                            if let Ok(mut current) = current_file.write() {
+                                *current = path.clone();
+                            }
+                            Some(path)
+                        },
+                        Err(e) => {
+                            let error_html = format!(
+                                "<!DOCTYPE html><html><body><h1>Invalid File Request</h1><p>{}</p></body></html>",
+                                e
+                            );
+                            let response = Response::builder()
+                                .status(StatusCode::BAD_REQUEST)
+                                .body(Body::from(error_html))
+                                .expect("invalid response builder");
+                            return Ok(response);
+                        }
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            md_file(file_override).await
+        },
         _ => {
             // Serve static files relative to the markdown file's directory
             let matches = cli::get_cli_matches();
@@ -207,16 +328,13 @@ fn method_not_allowed() -> Response<Body> {
 }
 
 // attribution https://github.com/razorheadfx/grup
-fn spawn_watcher(updaters: SenderListPtr) -> notify::Result<RecommendedWatcher> {
+fn spawn_watcher(updaters: SenderListPtr, current_file: CurrentFilePtr) -> notify::Result<RecommendedWatcher> {
     use notify::Watcher as _;
-
-    let matches = cli::get_cli_matches();
 
     // this uses os specific file watching where possible (i.e. inotify on linux)
     // it forks of a mio event loop in the background and then calls the provided closure
     // with the yielded events
     let cwd = env::current_dir().unwrap();
-    let md_file_name = cwd.join(&(matches.value_of("infile").unwrap())).to_owned();
 
     let mut file_event_watcher = RecommendedWatcher::new(
         move |event: notify::Result<Event>| {
@@ -234,13 +352,16 @@ fn spawn_watcher(updaters: SenderListPtr) -> notify::Result<RecommendedWatcher> 
                 _ => return,
             };
 
-            if event.paths.iter().any(|path| path.eq(&md_file_name)) {
-                if let Ok(mut updaters) = updaters.lock() {
-                    for tx in updaters.drain(..) {
-                        let _ = tx.send(());
+            // Check if any of the changed files match the currently watched file
+            if let Ok(current) = current_file.read() {
+                if event.paths.iter().any(|path| path.eq(&*current)) {
+                    if let Ok(mut updaters) = updaters.lock() {
+                        for tx in updaters.drain(..) {
+                            let _ = tx.send(());
+                        }
+                    } else {
+                        error!("Internal error: mutex");
                     }
-                } else {
-                    error!("Internal error: mutex");
                 }
             }
         },
@@ -382,16 +503,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         Ok(())
     } 
     else {
-        
-        
+        // Initialize the current file being watched to the CLI-specified file
+        let cwd = env::current_dir().unwrap();
+        let initial_file = cwd.join(matches.value_of("infile").unwrap());
+        let current_file = Arc::new(RwLock::new(initial_file));
+
         let updaters = Arc::new(Mutex::new(Vec::new()));
-        let _watcher = spawn_watcher(Arc::clone(&updaters));
+        let _watcher = spawn_watcher(Arc::clone(&updaters), Arc::clone(&current_file));
 
         let service = make_service_fn(|_| {
             let updaters = Arc::clone(&updaters);
+            let current_file = Arc::clone(&current_file);
             async {
                 Ok::<_, hyper::Error>(service_fn(move |req| {
-                    router(Arc::clone(&updaters), req)
+                    router(Arc::clone(&updaters), Arc::clone(&current_file), req)
                 }))
             }
         });
