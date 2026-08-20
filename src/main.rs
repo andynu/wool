@@ -430,14 +430,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         if matches.is_present("outfile") {
             let outfile: &str = matches.value_of("outfile").unwrap();
             let mut file = Sync_File::create(outfile).unwrap();
-            let outfile_prefix: Vec<&str> =
-                matches.value_of("outfile").unwrap().split(".").collect();
-            let boilerplate_name = format!("{}.md", outfile_prefix[0]);
             let infile = matches.value_of("infile").unwrap();
             let boilerplate = if matches.is_present("no-preview-frame") {
                 template::format_boilerplate_no_preview(infile)
             } else {
-                template::format_boilerplate(&boilerplate_name)
+                template::format_boilerplate(infile)
             };
             
             let css: &str = template::CSS;

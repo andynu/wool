@@ -4,7 +4,7 @@ pub fn format_boilerplate(filename: &str) -> String {
 }
 
 #[allow(dead_code)]
-pub fn format_boilerplate_no_preview(_filename: &str) -> String {
+pub fn format_boilerplate_no_preview(filename: &str) -> String {
     format!(
 "
 <!DOCTYPE html>
@@ -12,7 +12,7 @@ pub fn format_boilerplate_no_preview(_filename: &str) -> String {
 <head>
   <meta charset=\"utf-8\">
 		<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, minimal-ui\">
-		<title>GitHub Markdown CSS demo</title>
+		<title>{filename} - wool</title>
   <style>
     .preview-page {{
       margin-top: 64px;
@@ -79,7 +79,7 @@ pub fn format_boilerplate_no_preview(_filename: &str) -> String {
     </style>
   <body>
     <article class=\"markdown-body\">
- ")
+ ", filename = filename)
 }
 
 pub static CSS: &str = include_str!("../templates/github-markdown.css");
